@@ -29,6 +29,7 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/PatternMatch.h"
+#include "llvm/IR/Value.h"
 #include "llvm/Support/KnownBits.h"
 #include "llvm/Transforms/InstCombine/InstCombiner.h"
 #include <bitset>
@@ -2735,6 +2736,41 @@ Instruction *InstCombinerImpl::foldICmpSRemConstant(ICmpInst &Cmp,
   return new ICmpInst(ICmpInst::ICMP_UGT, And, ConstantInt::get(Ty, SignMask));
 }
 
+/// Fold icmp {eq, ne} ({us}rem (mul n{us}w XZ, YZ)), 0 ->
+/// icmp {eq, ne} ({us}rem (mul n{us}w X, Y)), 0
+// FIXME: only implemented signed case rn
+Instruction *InstCombinerImpl::foldICmpRemConstant(ICmpInst &Cmp,
+                                                   BinaryOperator *Rem,
+                                                   const APInt &C) {
+  const ICmpInst::Predicate Pred = Cmp.getPredicate();
+  if (Pred != ICmpInst::ICMP_EQ && Pred != ICmpInst::ICMP_NE)
+    return nullptr;
+
+  Value *Dividend{Rem->getOperand(0)};
+  Value *Divisor{Rem->getOperand(1)};
+
+  Value *X, *Y, *Z;
+  if (!match(Dividend, m_NSWMul(m_Value(X), m_Value(Z))))
+    return nullptr;
+
+  // HACK: there is no m_c_NSWMul matcher??
+  if (!match(Divisor, m_NSWMul(m_Value(Y), m_Specific(Z))) &&
+      !match(Divisor, m_NSWMul(m_Specific(Z), m_Value(Y)))) {
+    std::swap(X, Z);
+    if (!match(Divisor, m_NSWMul(m_Value(Y), m_Specific(Z))) &&
+        !match(Divisor, m_NSWMul(m_Specific(Z), m_Value(Y))))
+      return nullptr;
+  }
+
+  if (!Rem->hasOneUse())
+    return nullptr;
+
+  Value *NewRem = Builder.CreateSRem(X, Y);
+  Type *Ty = Rem->getType();
+
+  return new ICmpInst(Pred, NewRem, ConstantInt::get(Ty, C));
+}
+
 /// Fold icmp (udiv X, Y), C.
 Instruction *InstCombinerImpl::foldICmpUDivConstant(ICmpInst &Cmp,
                                                     BinaryOperator *UDiv,
@@ -4008,6 +4044,10 @@ Instruction *InstCombinerImpl::foldICmpBinOpWithConstant(ICmpInst &Cmp,
     break;
   case Instruction::SRem:
     if (Instruction *I = foldICmpSRemConstant(Cmp, BO, C))
+      return I;
+    [[fallthrough]];
+  case llvm::Instruction::URem:
+    if (Instruction *I = foldICmpRemConstant(Cmp, BO, C))
       return I;
     break;
   case Instruction::UDiv:
