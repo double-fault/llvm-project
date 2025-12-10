@@ -385,13 +385,15 @@ define i1 @icmp_ult_sremsmax_smax(i32 %x) {
   ret i1 %c
 }
 
+; TODO: Add negative test for when icmp constant is not zero
+; TODO: update_test_checks.py should be run on all test files to ensure that there is no diff caused in other tests because of this??
+; TODO: Add negative multi-use test for when %r is used more than once
+
 define i1 @icmp_eq_srem_product(i8 %x, i8 %y, i8 %z) {
 ; CHECK-LABEL: define i1 @icmp_eq_srem_product(
 ; CHECK-SAME: i8 [[X:%.*]], i8 [[Y:%.*]], i8 [[Z:%.*]]) {
-; CHECK-NEXT:    [[A:%.*]] = mul nsw i8 [[X]], [[Z]]
-; CHECK-NEXT:    [[B:%.*]] = mul nsw i8 [[Y]], [[Z]]
-; CHECK-NEXT:    [[R:%.*]] = srem i8 [[A]], [[B]]
-; CHECK-NEXT:    [[C:%.*]] = icmp eq i8 [[R]], 0
+; CHECK-NEXT:    [[TMP1:%.*]] = srem i8 [[X]], [[Y]]
+; CHECK-NEXT:    [[C:%.*]] = icmp eq i8 [[TMP1]], 0
 ; CHECK-NEXT:    ret i1 [[C]]
 ;
   %a = mul nsw i8 %x, %z
@@ -404,10 +406,8 @@ define i1 @icmp_eq_srem_product(i8 %x, i8 %y, i8 %z) {
 define i1 @icmp_eq_srem_product_commuted1(i8 %x, i8 %y, i8 %z) {
 ; CHECK-LABEL: define i1 @icmp_eq_srem_product_commuted1(
 ; CHECK-SAME: i8 [[X:%.*]], i8 [[Y:%.*]], i8 [[Z:%.*]]) {
-; CHECK-NEXT:    [[A:%.*]] = mul nsw i8 [[Z]], [[X]]
-; CHECK-NEXT:    [[B:%.*]] = mul nsw i8 [[Y]], [[Z]]
-; CHECK-NEXT:    [[R:%.*]] = srem i8 [[A]], [[B]]
-; CHECK-NEXT:    [[C:%.*]] = icmp eq i8 [[R]], 0
+; CHECK-NEXT:    [[TMP1:%.*]] = srem i8 [[X]], [[Y]]
+; CHECK-NEXT:    [[C:%.*]] = icmp eq i8 [[TMP1]], 0
 ; CHECK-NEXT:    ret i1 [[C]]
 ;
   %a = mul nsw i8 %z, %x
@@ -420,10 +420,8 @@ define i1 @icmp_eq_srem_product_commuted1(i8 %x, i8 %y, i8 %z) {
 define i1 @icmp_eq_srem_product_commuted2(i8 %x, i8 %y, i8 %z) {
 ; CHECK-LABEL: define i1 @icmp_eq_srem_product_commuted2(
 ; CHECK-SAME: i8 [[X:%.*]], i8 [[Y:%.*]], i8 [[Z:%.*]]) {
-; CHECK-NEXT:    [[A:%.*]] = mul nsw i8 [[X]], [[Z]]
-; CHECK-NEXT:    [[B:%.*]] = mul nsw i8 [[Z]], [[Y]]
-; CHECK-NEXT:    [[R:%.*]] = srem i8 [[A]], [[B]]
-; CHECK-NEXT:    [[C:%.*]] = icmp eq i8 [[R]], 0
+; CHECK-NEXT:    [[TMP1:%.*]] = srem i8 [[X]], [[Y]]
+; CHECK-NEXT:    [[C:%.*]] = icmp eq i8 [[TMP1]], 0
 ; CHECK-NEXT:    ret i1 [[C]]
 ;
   %a = mul nsw i8 %x, %z
@@ -436,10 +434,8 @@ define i1 @icmp_eq_srem_product_commuted2(i8 %x, i8 %y, i8 %z) {
 define i1 @icmp_eq_srem_product_commuted3(i8 %x, i8 %y, i8 %z) {
 ; CHECK-LABEL: define i1 @icmp_eq_srem_product_commuted3(
 ; CHECK-SAME: i8 [[X:%.*]], i8 [[Y:%.*]], i8 [[Z:%.*]]) {
-; CHECK-NEXT:    [[A:%.*]] = mul nsw i8 [[Z]], [[X]]
-; CHECK-NEXT:    [[B:%.*]] = mul nsw i8 [[Z]], [[Y]]
-; CHECK-NEXT:    [[R:%.*]] = srem i8 [[A]], [[B]]
-; CHECK-NEXT:    [[C:%.*]] = icmp eq i8 [[R]], 0
+; CHECK-NEXT:    [[TMP1:%.*]] = srem i8 [[X]], [[Y]]
+; CHECK-NEXT:    [[C:%.*]] = icmp eq i8 [[TMP1]], 0
 ; CHECK-NEXT:    ret i1 [[C]]
 ;
   %a = mul nsw i8 %z, %x
@@ -474,10 +470,8 @@ define i1 @icmp_eq_srem_product_multi_use(i8 %x, i8 %y, i8 %z) {
 define i1 @icmp_ne_srem_product(i8 %x, i8 %y, i8 %z) {
 ; CHECK-LABEL: define i1 @icmp_ne_srem_product(
 ; CHECK-SAME: i8 [[X:%.*]], i8 [[Y:%.*]], i8 [[Z:%.*]]) {
-; CHECK-NEXT:    [[A:%.*]] = mul nsw i8 [[X]], [[Z]]
-; CHECK-NEXT:    [[B:%.*]] = mul nsw i8 [[Y]], [[Z]]
-; CHECK-NEXT:    [[R:%.*]] = srem i8 [[A]], [[B]]
-; CHECK-NEXT:    [[C:%.*]] = icmp ne i8 [[R]], 0
+; CHECK-NEXT:    [[TMP1:%.*]] = srem i8 [[X]], [[Y]]
+; CHECK-NEXT:    [[C:%.*]] = icmp ne i8 [[TMP1]], 0
 ; CHECK-NEXT:    ret i1 [[C]]
 ;
   %a = mul nsw i8 %x, %z
@@ -493,7 +487,7 @@ define i1 @icmp_eq_srem_product_no_flags1(i8 %x, i8 %y, i8 %z) {
 ; CHECK-NEXT:    [[A:%.*]] = mul i8 [[X]], [[Z]]
 ; CHECK-NEXT:    [[B:%.*]] = mul nsw i8 [[Y]], [[Z]]
 ; CHECK-NEXT:    [[R:%.*]] = srem i8 [[A]], [[B]]
-; CHECK-NEXT:    [[C:%.*]] = icmp ne i8 [[R]], 0
+; CHECK-NEXT:    [[C:%.*]] = icmp eq i8 [[R]], 0
 ; CHECK-NEXT:    ret i1 [[C]]
 ;
   %a = mul i8 %x, %z
@@ -509,7 +503,7 @@ define i1 @icmp_eq_srem_product_no_flags2(i8 %x, i8 %y, i8 %z) {
 ; CHECK-NEXT:    [[A:%.*]] = mul nsw i8 [[X]], [[Z]]
 ; CHECK-NEXT:    [[B:%.*]] = mul i8 [[Y]], [[Z]]
 ; CHECK-NEXT:    [[R:%.*]] = srem i8 [[A]], [[B]]
-; CHECK-NEXT:    [[C:%.*]] = icmp ne i8 [[R]], 0
+; CHECK-NEXT:    [[C:%.*]] = icmp eq i8 [[R]], 0
 ; CHECK-NEXT:    ret i1 [[C]]
 ;
   %a = mul nsw i8 %x, %z
@@ -525,7 +519,7 @@ define i1 @icmp_eq_srem_product_not_common_op(i8 %x, i8 %y, i8 %u, i8 %v) {
 ; CHECK-NEXT:    [[A:%.*]] = mul nsw i8 [[X]], [[U]]
 ; CHECK-NEXT:    [[B:%.*]] = mul nsw i8 [[Y]], [[V]]
 ; CHECK-NEXT:    [[R:%.*]] = srem i8 [[A]], [[B]]
-; CHECK-NEXT:    [[C:%.*]] = icmp ne i8 [[R]], 0
+; CHECK-NEXT:    [[C:%.*]] = icmp eq i8 [[R]], 0
 ; CHECK-NEXT:    ret i1 [[C]]
 ;
   %a = mul nsw i8 %x, %u
